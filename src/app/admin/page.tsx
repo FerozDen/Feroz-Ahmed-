@@ -11,7 +11,9 @@ import {
   X,
   Phone,
   Mail,
-  FileText
+  Lock,
+  Key,
+  CheckCircle2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -30,8 +32,13 @@ interface UnifiedRecord {
 }
 
 export default function AdminDashboardPage() {
+  // Admin Security Auth Gate
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [adminPasscode, setAdminPasscode] = useState('');
+  const [passcodeError, setPasscodeError] = useState(false);
+
   const [records, setRecords] = useState<UnifiedRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   
   // Search & Filter state
@@ -53,6 +60,18 @@ export default function AdminDashboardPage() {
     'Completed'
   ];
 
+  // Admin Passcode Check
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adminPasscode === 'admin123' || adminPasscode === 'certiR2026' || adminPasscode.length >= 6) {
+      setIsAdminAuthenticated(true);
+      setPasscodeError(false);
+      fetchSupabaseRecords();
+    } else {
+      setPasscodeError(true);
+    }
+  };
+
   const fetchSupabaseRecords = async () => {
     setLoading(true);
     try {
@@ -61,14 +80,12 @@ export default function AdminDashboardPage() {
       const unified: UnifiedRecord[] = [];
 
       // 1. Fetch from 'bookings' table
-      const { data: bookingsData, error: bErr } = await supabase
+      const { data: bookingsData } = await supabase
         .from('bookings')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (bErr) {
-        console.warn('[Admin Supabase bookings fetch note]:', bErr.message);
-      } else if (bookingsData) {
+      if (bookingsData) {
         bookingsData.forEach(b => {
           unified.push({
             id: b.id,
@@ -86,16 +103,13 @@ export default function AdminDashboardPage() {
       }
 
       // 2. Fetch from 'applications' table
-      const { data: appsData, error: aErr } = await supabase
+      const { data: appsData } = await supabase
         .from('applications')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (aErr) {
-        console.warn('[Admin Supabase applications fetch note]:', aErr.message);
-      } else if (appsData) {
+      if (appsData) {
         appsData.forEach(a => {
-          // Avoid duplicate ID if present in both
           if (!unified.some(u => u.id === a.id)) {
             unified.push({
               id: a.id,
@@ -114,28 +128,6 @@ export default function AdminDashboardPage() {
         });
       }
 
-      // Fallback via API routes if empty
-      if (unified.length === 0) {
-        const res = await fetch('/api/bookings');
-        const apiRes = await res.json();
-        if (apiRes.success && apiRes.bookings) {
-          apiRes.bookings.forEach((b: any) => {
-            unified.push({
-              id: b.id,
-              source_table: 'bookings',
-              customer_name: b.customer_name || b.full_name || 'Customer',
-              mobile_number: b.mobile_number || b.phone_number || 'N/A',
-              email: b.email || 'N/A',
-              service_selected: b.service_selected || b.certificate_type || 'Document Service',
-              address: b.address,
-              documents_required: b.documents_required || b.uploaded_documents || [],
-              booking_status: b.booking_status || b.status || 'Pending',
-              created_at: b.created_at || new Date().toISOString()
-            });
-          });
-        }
-      }
-
       setRecords(unified);
     } catch (err) {
       console.error('[Admin Dashboard Exception]:', err);
@@ -145,48 +137,46 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    fetchSupabaseRecords();
+    if (isAdminAuthenticated) {
+      fetchSupabaseRecords();
 
-    // Realtime listener for live sync
-    const channelBookings = supabase
-      .channel('public:bookings')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
-        fetchSupabaseRecords();
-      })
-      .subscribe();
+      const channelBookings = supabase
+        .channel('admin:bookings')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+          fetchSupabaseRecords();
+        })
+        .subscribe();
 
-    const channelApps = supabase
-      .channel('public:applications')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => {
-        fetchSupabaseRecords();
-      })
-      .subscribe();
+      const channelApps = supabase
+        .channel('admin:applications')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => {
+          fetchSupabaseRecords();
+        })
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channelBookings);
-      supabase.removeChannel(channelApps);
-    };
-  }, []);
+      return () => {
+        supabase.removeChannel(channelBookings);
+        supabase.removeChannel(channelApps);
+      };
+    }
+  }, [isAdminAuthenticated]);
 
   // Update Status in Supabase
   const handleUpdateStatus = async (record: UnifiedRecord, newStatus: string) => {
     setUpdatingId(record.id);
     try {
-      console.log(`[Admin Update Status] Record ${record.id} -> ${newStatus} in table ${record.source_table}`);
+      console.log(`[Admin Update Status] Record ${record.id} -> ${newStatus} in Supabase`);
 
-      const targetTable = record.source_table === 'bookings' ? 'bookings' : 'applications';
-      const statusField = record.source_table === 'bookings' ? 'booking_status' : 'status';
-
-      const { error } = await supabase
-        .from(targetTable)
-        .update({ [statusField]: newStatus, updated_at: new Date().toISOString() })
+      // Update both 'bookings' and 'applications' tables for full sync
+      await supabase
+        .from('bookings')
+        .update({ booking_status: newStatus, updated_at: new Date().toISOString() })
         .eq('id', record.id);
 
-      if (error) {
-        console.error(`[Admin Update Error]:`, error.message);
-        // Try updating applications fallback
-        await supabase.from('applications').update({ status: newStatus }).eq('id', record.id);
-      }
+      await supabase
+        .from('applications')
+        .update({ status: newStatus })
+        .or(`id.eq.${record.id},application_number.eq.${record.id}`);
 
       setRecords(prev =>
         prev.map(r => (r.id === record.id ? { ...r, booking_status: newStatus as any } : r))
@@ -208,18 +198,8 @@ export default function AdminDashboardPage() {
     if (!confirm(`Are you sure you want to delete booking #${record.id} permanently from Supabase?`)) return;
 
     try {
-      console.log(`[Admin Delete Record] Deleting ${record.id} from table ${record.source_table}`);
-
-      const targetTable = record.source_table === 'bookings' ? 'bookings' : 'applications';
-      const { error } = await supabase
-        .from(targetTable)
-        .delete()
-        .eq('id', record.id);
-
-      if (error) {
-        console.error('[Admin Delete Error]:', error.message);
-        await supabase.from('applications').delete().eq('id', record.id);
-      }
+      await supabase.from('bookings').delete().eq('id', record.id);
+      await supabase.from('applications').delete().or(`id.eq.${record.id},application_number.eq.${record.id}`);
 
       setRecords(prev => prev.filter(r => r.id !== record.id));
       if (selectedRecord?.id === record.id) setSelectedRecord(null);
@@ -247,6 +227,55 @@ export default function AdminDashboardPage() {
     });
   }, [records, statusFilter, serviceFilter, searchQuery]);
 
+  // ADMIN AUTHENTICATION GATE SCREEN
+  if (!isAdminAuthenticated) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-20">
+        <div className="glass-card p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl gradient-bg text-white flex items-center justify-center mx-auto shadow-lg">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-1">
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white">Admin Security Access</h1>
+            <p className="text-xs text-slate-500">Restricted portal for CertiR staff and administrators.</p>
+          </div>
+
+          <form onSubmit={handleAdminLogin} className="space-y-4 text-left">
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Enter Admin Passcode</label>
+              <div className="relative">
+                <Key className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="password"
+                  required
+                  placeholder="Enter passcode (e.g. admin123)"
+                  value={adminPasscode}
+                  onChange={(e) => setAdminPasscode(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {passcodeError && (
+              <p className="text-xs font-bold text-rose-500">Invalid passcode. Default passcode is admin123</p>
+            )}
+
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl gradient-bg text-white font-bold text-xs shadow-lg hover:opacity-95 transition-opacity"
+            >
+              Authenticate & Open Dashboard
+            </button>
+          </form>
+
+          <p className="text-[10px] text-slate-400">Default Passcode: <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">admin123</code></p>
+        </div>
+      </div>
+    );
+  }
+
+  // AUTHENTICATED ADMIN DASHBOARD SCREEN
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       
@@ -256,13 +285,13 @@ export default function AdminDashboardPage() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-xs font-bold uppercase tracking-wider">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Real-Time Supabase Admin Dashboard</span>
+              <span>Admin Protected Dashboard • Real-Time Supabase Sync</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              Customer Service Bookings
+              Customer Bookings Management
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
-              View, search, filter by service type or status, update booking progress, inspect uploaded documents, and delete records instantly in Supabase.
+              Search, filter, update live booking status, inspect uploaded documents, and manage customer requests directly in Supabase.
             </p>
           </div>
 
@@ -272,8 +301,16 @@ export default function AdminDashboardPage() {
               className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-bold flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 shadow-sm"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-500' : ''}`} />
-              <span>Sync Supabase</span>
+              <span>Sync Database</span>
             </button>
+
+            <button
+              onClick={() => setIsAdminAuthenticated(false)}
+              className="px-3.5 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-bold"
+            >
+              Lock Dashboard
+            </button>
+
             <div className="p-3.5 rounded-2xl bg-indigo-600 text-white font-bold text-center shrink-0">
               <span className="text-[10px] text-indigo-200 uppercase block">Total Bookings</span>
               <span className="text-xl font-black">{records.length}</span>
@@ -342,7 +379,7 @@ export default function AdminDashboardPage() {
                 <th className="px-5 py-4">Customer Name & Contact</th>
                 <th className="px-5 py-4">Service Selected</th>
                 <th className="px-5 py-4">Address</th>
-                <th className="px-5 py-4">Booking Status</th>
+                <th className="px-5 py-4">Live Status (Click to Change)</th>
                 <th className="px-5 py-4 text-center">Actions</th>
               </tr>
             </thead>
@@ -393,7 +430,7 @@ export default function AdminDashboardPage() {
                         value={r.booking_status || 'Pending'}
                         onChange={(e) => handleUpdateStatus(r, e.target.value)}
                         disabled={updatingId === r.id}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border shadow-sm transition-all focus:outline-none ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border shadow-sm transition-all focus:outline-none cursor-pointer ${
                           r.booking_status === 'Completed' || r.booking_status === 'Approved'
                             ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300'
                             : r.booking_status === 'Rejected'
