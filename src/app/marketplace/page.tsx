@@ -11,16 +11,22 @@ import {
   ArrowRight, 
   ShieldCheck, 
   Calculator,
-  ChevronRight
+  ChevronRight,
+  Sparkles,
+  Building2
 } from 'lucide-react';
 import { INITIAL_SERVICES, ServiceItem } from '@/db/seed-data';
+import QuickBookingModal from '@/components/QuickBookingModal';
 
 export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [maxFee, setMaxFee] = useState<number>(2000);
 
-  const categories = ['All', 'Identity', 'Income & Tax', 'Residence & Caste', 'Vehicle & Driving', 'Business & Legal'];
+  const [selectedServiceForModal, setSelectedServiceForModal] = useState<ServiceItem | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const categories = ['All', 'Identity', 'Income & Tax', 'Residence & Caste', 'Property & Certificates', 'Vehicle & Driving', 'Business & Legal'];
 
   const filteredServices = useMemo(() => {
     return INITIAL_SERVICES.filter(service => {
@@ -31,6 +37,11 @@ export default function MarketplacePage() {
       return matchesCategory && matchesSearch && matchesFee;
     });
   }, [searchQuery, selectedCategory, maxFee]);
+
+  const handleOpenBookingModal = (service: ServiceItem) => {
+    setSelectedServiceForModal(service);
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -46,13 +57,13 @@ export default function MarketplacePage() {
               Apply For Government & Personal Certificates
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
-              Transparent fees, official processing timelines, required document checklists, and direct online filing for all essential certificates.
+              Transparent fees, official processing timelines, required document checklists, and 2-click doorstep booking for all essential certificates.
             </p>
           </div>
 
           <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 text-center md:text-right shrink-0">
             <span className="text-xs text-slate-500 uppercase font-semibold block">Available Services</span>
-            <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400">10+ Active</span>
+            <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400">{INITIAL_SERVICES.length}+ Active</span>
           </div>
         </div>
       </div>
@@ -65,7 +76,7 @@ export default function MarketplacePage() {
           <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search service name, document type..."
+            placeholder="Search service name, document type (Birth, Income, Caste, EWS, Passport)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
@@ -117,7 +128,7 @@ export default function MarketplacePage() {
           filteredServices.map((service) => (
             <div
               key={service.id}
-              className="glass-card rounded-2xl p-6 flex flex-col justify-between hover:shadow-xl transition-all border border-slate-200/80 dark:border-slate-800 space-y-4"
+              className="glass-card rounded-3xl p-6 flex flex-col justify-between hover:shadow-xl transition-all border border-slate-200/80 dark:border-slate-800 space-y-4"
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -134,13 +145,13 @@ export default function MarketplacePage() {
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                   {service.title}
                 </h2>
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2">
                   {service.description}
                 </p>
 
                 {/* Required Docs checklist preview */}
                 <div className="pt-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Required Documents:</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Required Proofs:</span>
                   <div className="space-y-1">
                     {service.requiredDocs.map((doc, idx) => (
                       <div key={idx} className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
@@ -162,21 +173,30 @@ export default function MarketplacePage() {
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-400 uppercase block">Estimated Days</span>
+                    <span className="text-[10px] text-slate-400 uppercase block">Delivery Time</span>
                     <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5" />
-                      {service.estimatedDays} Business Days
+                      {service.estimatedDays} Days
                     </span>
                   </div>
                 </div>
 
-                <Link
-                  href={`/marketplace/${service.id}/apply`}
-                  className="w-full py-3 rounded-xl gradient-bg text-white font-bold text-xs flex items-center justify-center gap-2 hover:opacity-95 transition-opacity shadow-md"
-                >
-                  <span>Start Application</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href={`/marketplace/${service.id}/apply`}
+                    className="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-1 hover:bg-slate-200 transition-colors"
+                  >
+                    <span>Full Details</span>
+                  </Link>
+
+                  <button
+                    onClick={() => handleOpenBookingModal(service)}
+                    className="py-2.5 rounded-xl gradient-bg text-white font-black text-xs flex items-center justify-center gap-1 hover:opacity-95 transition-opacity shadow-md"
+                  >
+                    <span>BOOK NOW</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
             </div>
@@ -189,6 +209,13 @@ export default function MarketplacePage() {
           </div>
         )}
       </div>
+
+      {/* QUICK BOOKING MODAL */}
+      <QuickBookingModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        service={selectedServiceForModal}
+      />
 
     </div>
   );

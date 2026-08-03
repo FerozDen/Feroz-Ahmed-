@@ -3,11 +3,12 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import Providers from '@/components/Providers';
+import StickyActions from '@/components/StickyActions';
 
 export const metadata: Metadata = {
-  title: 'certiR - One Platform For All Documents | Marketplace, Store, Track & Renew',
-  description: 'Manage all your documents in one place. Apply for Aadhaar, PAN, Income, Residence, Driving Licence, store in digital vault, track application status, and renew certificates.',
-  keywords: ['certiR', 'document store', 'aadhaar', 'pan card', 'income certificate', 'residence certificate', 'document vault', 'document renewal', 'track application'],
+  title: 'CertiR - Doorstep Government Certificate & Document Services',
+  description: 'Book Birth, Income, Caste, EWS, Residence, Marriage, Passport, PAN, Aadhaar, and Government Certificates with doorstep document collection and 100% government compliance.',
+  keywords: ['CertiR', 'birth certificate', 'income certificate', 'caste certificate', 'ews certificate', 'marriage certificate', 'doorstep document service', 'pan card', 'aadhaar service', 'passport assistance'],
 };
 
 export default function RootLayout({
@@ -17,13 +18,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="scroll-smooth">
-      <body className="min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+      <body className="min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white pb-16 sm:pb-0">
         <Providers>
           <Navbar />
           <main className="flex-1">
             {children}
           </main>
           <Footer />
+          <StickyActions />
         </Providers>
       </body>
     </html>

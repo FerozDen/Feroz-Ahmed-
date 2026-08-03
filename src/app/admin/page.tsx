@@ -14,7 +14,17 @@ import {
   Lock,
   Key,
   CheckCircle2,
-  FileText
+  FileText,
+  Download,
+  Printer,
+  MessageSquare,
+  UserCheck,
+  Building2,
+  Calendar,
+  Clock,
+  TrendingUp,
+  DollarSign,
+  FileSpreadsheet
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -27,13 +37,15 @@ interface UnifiedRecord {
   service_selected: string;
   address?: string;
   documents_required?: string[];
-  booking_status: 'Pending' | 'In Progress' | 'Documents Collected' | 'Submitted' | 'Approved' | 'Rejected' | 'Completed';
+  booking_status: 'Pending' | 'Contacted' | 'Documents Collected' | 'Application Submitted' | 'Verification' | 'Approved' | 'Rejected' | 'Delivered' | 'Completed';
   created_at: string;
   additional_notes?: string;
+  assigned_employee?: string;
+  admin_notes?: string;
 }
 
 export default function AdminDashboardPage() {
-  // Admin Security Auth Gate
+  // Admin Passcode Barrier
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [adminPasscode, setAdminPasscode] = useState('');
   const [passcodeError, setPasscodeError] = useState(false);
@@ -47,21 +59,24 @@ export default function AdminDashboardPage() {
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [serviceFilter, setServiceFilter] = useState<string>('All');
 
-  // Inspector Modal state
+  // Inspector & Edit Modal state
   const [selectedRecord, setSelectedRecord] = useState<UnifiedRecord | null>(null);
+  const [employeeInput, setEmployeeInput] = useState('');
+  const [notesInput, setNotesInput] = useState('');
 
   const statuses = [
     'All',
     'Pending',
-    'In Progress',
+    'Contacted',
     'Documents Collected',
-    'Submitted',
+    'Application Submitted',
+    'Verification',
     'Approved',
     'Rejected',
+    'Delivered',
     'Completed'
   ];
 
-  // Admin Passcode Check
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (adminPasscode === 'admin123' || adminPasscode === 'certiR2026' || adminPasscode.length >= 6) {
@@ -77,10 +92,9 @@ export default function AdminDashboardPage() {
     setLoading(true);
     try {
       console.log('[Admin Dashboard] Querying Supabase tables bookings and applications...');
-
       const unified: UnifiedRecord[] = [];
 
-      // 1. Fetch from 'bookings' table
+      // 1. Fetch from 'bookings'
       const { data: bookingsData } = await supabase
         .from('bookings')
         .select('*')
@@ -97,13 +111,13 @@ export default function AdminDashboardPage() {
             service_selected: b.service_selected || 'Document Service',
             address: b.address,
             documents_required: b.documents_required || [],
-            booking_status: b.booking_status || 'Pending',
+            booking_status: (b.booking_status as any) || 'Pending',
             created_at: b.created_at || new Date().toISOString()
           });
         });
       }
 
-      // 2. Fetch from 'applications' table
+      // 2. Fetch from 'applications'
       const { data: appsData } = await supabase
         .from('applications')
         .select('*')
@@ -121,7 +135,7 @@ export default function AdminDashboardPage() {
               service_selected: a.certificate_type || a.service_title || 'Document Service',
               address: a.address || a.pickup_address,
               documents_required: a.uploaded_documents || [],
-              booking_status: a.status || a.booking_status || 'Pending',
+              booking_status: (a.status || a.booking_status || 'Pending') as any,
               created_at: a.created_at || new Date().toISOString(),
               additional_notes: a.additional_notes
             });
@@ -168,7 +182,6 @@ export default function AdminDashboardPage() {
     try {
       console.log(`[Admin Update Status] Record ${record.id} -> ${newStatus} in Supabase`);
 
-      // Update both 'bookings' and 'applications' tables for full sync
       await supabase
         .from('bookings')
         .update({ booking_status: newStatus, updated_at: new Date().toISOString() })
@@ -196,7 +209,7 @@ export default function AdminDashboardPage() {
 
   // Delete Record in Supabase
   const handleDeleteRecord = async (record: UnifiedRecord) => {
-    if (!confirm(`Are you sure you want to delete booking #${record.id} permanently from Supabase?`)) return;
+    if (!confirm(`Are you sure you want to delete booking #${record.id} permanently?`)) return;
 
     try {
       await supabase.from('bookings').delete().eq('id', record.id);
@@ -208,6 +221,30 @@ export default function AdminDashboardPage() {
     } catch (err) {
       console.error('Delete record exception:', err);
     }
+  };
+
+  // Export to CSV Functionality as per PRD
+  const exportToCSV = () => {
+    const headers = ['Booking ID', 'Date', 'Customer Name', 'Mobile Number', 'Email', 'Service Selected', 'Address', 'Status'];
+    const rows = filteredRecords.map(r => [
+      `"${r.id}"`,
+      `"${new Date(r.created_at).toLocaleDateString()}"`,
+      `"${r.customer_name.replace(/"/g, '""')}"`,
+      `"${r.mobile_number}"`,
+      `"${r.email}"`,
+      `"${r.service_selected}"`,
+      `"${(r.address || '').replace(/"/g, '""')}"`,
+      `"${r.booking_status}"`
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `CertiR_Bookings_Report_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Filter Computation
@@ -228,6 +265,13 @@ export default function AdminDashboardPage() {
     });
   }, [records, statusFilter, serviceFilter, searchQuery]);
 
+  // Metrics Calculations
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayBookingsCount = records.filter(r => (r.created_at || '').startsWith(todayStr)).length;
+  const pendingCount = records.filter(r => r.booking_status === 'Pending' || r.booking_status === 'Contacted').length;
+  const completedCount = records.filter(r => r.booking_status === 'Completed' || r.booking_status === 'Delivered' || r.booking_status === 'Approved').length;
+  const estimatedRevenue = records.length * 350;
+
   // ADMIN AUTHENTICATION GATE SCREEN
   if (!isAdminAuthenticated) {
     return (
@@ -238,8 +282,8 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="space-y-1">
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white">Admin Security Access</h1>
-            <p className="text-xs text-slate-500">Restricted portal for CertiR staff and administrators.</p>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white">CertiR Admin Dashboard</h1>
+            <p className="text-xs text-slate-500">Restricted operational panel for CertiR staff.</p>
           </div>
 
           <form onSubmit={handleAdminLogin} className="space-y-4 text-left">
@@ -286,38 +330,71 @@ export default function AdminDashboardPage() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-xs font-bold uppercase tracking-wider">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Admin Protected Dashboard • Real-Time Supabase Sync</span>
+              <span>CertiR Operations Center • Real-Time Supabase Sync</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              Customer Bookings Management
+              Customer Bookings & Operations
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
-              Search, filter, update live booking status, inspect uploaded documents, and manage customer requests directly in Supabase.
+              Manage doorstep document collections, call customers directly, launch WhatsApp chats, update application workflow status, and export reports.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={exportToCSV}
+              className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-2 shadow-md transition-colors"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Export CSV</span>
+            </button>
+
             <button
               onClick={fetchSupabaseRecords}
-              className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-bold flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 shadow-sm"
+              className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-bold flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-sm"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-500' : ''}`} />
-              <span>Sync Database</span>
+              <span>Sync DB</span>
             </button>
 
             <button
               onClick={() => setIsAdminAuthenticated(false)}
-              className="px-3.5 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-bold"
+              className="px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-bold"
             >
-              Lock Dashboard
+              Lock
             </button>
-
-            <div className="p-3.5 rounded-2xl bg-indigo-600 text-white font-bold text-center shrink-0">
-              <span className="text-[10px] text-indigo-200 uppercase block">Total Bookings</span>
-              <span className="text-xl font-black">{records.length}</span>
-            </div>
           </div>
         </div>
+      </div>
+
+      {/* METRICS CARDS AS SPECIFIED IN PRD */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        
+        <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
+          <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Bookings</span>
+          <span className="text-2xl font-black text-slate-900 dark:text-white">{records.length}</span>
+        </div>
+
+        <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
+          <span className="text-[10px] font-bold uppercase text-indigo-500 block">Today's Bookings</span>
+          <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{todayBookingsCount}</span>
+        </div>
+
+        <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
+          <span className="text-[10px] font-bold uppercase text-amber-500 block">Pending Action</span>
+          <span className="text-2xl font-black text-amber-600 dark:text-amber-400">{pendingCount}</span>
+        </div>
+
+        <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
+          <span className="text-[10px] font-bold uppercase text-emerald-500 block">Completed</span>
+          <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{completedCount}</span>
+        </div>
+
+        <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1 col-span-2 lg:col-span-1">
+          <span className="text-[10px] font-bold uppercase text-cyan-500 block">Est. Revenue</span>
+          <span className="text-2xl font-black text-cyan-600 dark:text-cyan-400">₹{estimatedRevenue}</span>
+        </div>
+
       </div>
 
       {/* Search & Filter Bar */}
@@ -357,13 +434,15 @@ export default function AdminDashboardPage() {
             className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           >
             <option value="All">Filter by Service (All)</option>
-            <option value="Aadhaar">Aadhaar Services</option>
-            <option value="PAN">PAN Card</option>
+            <option value="Birth">Birth Certificate</option>
             <option value="Income">Income Certificate</option>
-            <option value="Domicile">Domicile / Residence</option>
-            <option value="Driving">Driving Licence</option>
-            <option value="Passport">Passport</option>
-            <option value="GST">GST Registration</option>
+            <option value="Caste">Caste Certificate</option>
+            <option value="EWS">EWS Certificate</option>
+            <option value="Residence">Residence / Domicile</option>
+            <option value="Marriage">Marriage Certificate</option>
+            <option value="Passport">Passport Assistance</option>
+            <option value="PAN">PAN Card</option>
+            <option value="Aadhaar">Aadhaar Services</option>
           </select>
         </div>
 
@@ -379,101 +458,133 @@ export default function AdminDashboardPage() {
                 <th className="px-5 py-4">Booking ID / Date</th>
                 <th className="px-5 py-4">Customer Name & Contact</th>
                 <th className="px-5 py-4">Service Selected</th>
-                <th className="px-5 py-4">Address</th>
-                <th className="px-5 py-4">Live Status (Click to Change)</th>
-                <th className="px-5 py-4 text-center">Actions</th>
+                <th className="px-5 py-4">Address / Doorstep</th>
+                <th className="px-5 py-4">Workflow Status</th>
+                <th className="px-5 py-4 text-center">Quick Actions</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
               {filteredRecords.length > 0 ? (
-                filteredRecords.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                    
-                    {/* ID & Date */}
-                    <td className="px-5 py-4 space-y-1">
-                      <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 block">
-                        {r.id.substring(0, 15)}
-                      </span>
-                      <span className="text-[10px] text-slate-400 block font-mono">
-                        {new Date(r.created_at).toLocaleDateString()}
-                      </span>
-                    </td>
+                filteredRecords.map((r) => {
+                  const callUrl = `tel:${r.mobile_number}`;
+                  const waText = `Hello ${r.customer_name}, this is CertiR team regarding your booking ID ${r.id} for ${r.service_selected}.`;
+                  const waUrl = `https://wa.me/${r.mobile_number.replace(/\D/g, '')}?text=${encodeURIComponent(waText)}`;
 
-                    {/* Customer Info */}
-                    <td className="px-5 py-4 space-y-1">
-                      <span className="font-bold text-slate-900 dark:text-white block">
-                        {r.customer_name}
-                      </span>
-                      <div className="flex items-center gap-3 text-[11px] text-slate-500">
-                        <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-emerald-500" />{r.mobile_number}</span>
-                        <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-indigo-500" />{r.email}</span>
-                      </div>
-                    </td>
+                  return (
+                    <tr key={r.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      
+                      {/* ID & Date */}
+                      <td className="px-5 py-4 space-y-1">
+                        <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 block">
+                          {r.id}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block font-mono">
+                          {new Date(r.created_at).toLocaleDateString()}
+                        </span>
+                      </td>
 
-                    {/* Service */}
-                    <td className="px-5 py-4">
-                      <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
-                        {r.service_selected}
-                      </span>
-                    </td>
+                      {/* Customer Info */}
+                      <td className="px-5 py-4 space-y-1">
+                        <span className="font-bold text-slate-900 dark:text-white block">
+                          {r.customer_name}
+                        </span>
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <a href={callUrl} className="text-emerald-600 font-semibold hover:underline flex items-center gap-1">
+                            <Phone className="w-3 h-3" /> {r.mobile_number}
+                          </a>
+                        </div>
+                      </td>
 
-                    {/* Address */}
-                    <td className="px-5 py-4 text-[11px] max-w-[200px] truncate">
-                      <span className="text-slate-600 dark:text-slate-400">
-                        {r.address || 'Doorstep Delivery'}
-                      </span>
-                    </td>
+                      {/* Service */}
+                      <td className="px-5 py-4">
+                        <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                          {r.service_selected}
+                        </span>
+                      </td>
 
-                    {/* Status Dropdown */}
-                    <td className="px-5 py-4">
-                      <select
-                        value={r.booking_status || 'Pending'}
-                        onChange={(e) => handleUpdateStatus(r, e.target.value)}
-                        disabled={updatingId === r.id}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border shadow-sm transition-all focus:outline-none cursor-pointer ${
-                          r.booking_status === 'Completed' || r.booking_status === 'Approved'
-                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300'
-                            : r.booking_status === 'Rejected'
-                            ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300'
-                            : r.booking_status === 'In Progress' || r.booking_status === 'Documents Collected'
-                            ? 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-300'
-                            : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300'
-                        }`}
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Documents Collected">Documents Collected</option>
-                        <option value="Submitted">Submitted</option>
-                        <option value="Approved">Approved</option>
-                        <option value="Rejected">Rejected</option>
-                        <option value="Completed">Completed</option>
-                      </select>
-                    </td>
+                      {/* Address */}
+                      <td className="px-5 py-4 text-[11px] max-w-[180px] truncate">
+                        <span className="text-slate-600 dark:text-slate-400">
+                          {r.address || 'Doorstep Pickup'}
+                        </span>
+                      </td>
 
-                    {/* Actions */}
-                    <td className="px-5 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => setSelectedRecord(r)}
-                          className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-indigo-600 transition-colors"
-                          title="Inspect Details & Documents"
+                      {/* Status Dropdown Workflow */}
+                      <td className="px-5 py-4">
+                        <select
+                          value={r.booking_status || 'Pending'}
+                          onChange={(e) => handleUpdateStatus(r, e.target.value)}
+                          disabled={updatingId === r.id}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border shadow-sm transition-all focus:outline-none cursor-pointer ${
+                            r.booking_status === 'Completed' || r.booking_status === 'Delivered' || r.booking_status === 'Approved'
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300'
+                              : r.booking_status === 'Rejected'
+                              ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300'
+                              : r.booking_status === 'Documents Collected' || r.booking_status === 'Application Submitted' || r.booking_status === 'Verification'
+                              ? 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-300'
+                              : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300'
+                          }`}
                         >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                          <option value="Pending">Pending</option>
+                          <option value="Contacted">Contacted</option>
+                          <option value="Documents Collected">Documents Collected</option>
+                          <option value="Application Submitted">Application Submitted</option>
+                          <option value="Verification">Verification</option>
+                          <option value="Approved">Approved</option>
+                          <option value="Rejected">Rejected</option>
+                          <option value="Delivered">Delivered</option>
+                          <option value="Completed">Completed</option>
+                        </select>
+                      </td>
 
-                        <button
-                          onClick={() => handleDeleteRecord(r)}
-                          className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition-colors"
-                          title="Delete Booking from Supabase"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+                      {/* Actions */}
+                      <td className="px-5 py-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          
+                          {/* WhatsApp Direct Action */}
+                          <a
+                            href={waUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                            title="Open WhatsApp Chat"
+                          >
+                            <MessageSquare className="w-4 h-4 fill-current" />
+                          </a>
 
-                  </tr>
-                ))
+                          {/* Direct Call Action */}
+                          <a
+                            href={callUrl}
+                            className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 hover:bg-indigo-100 transition-colors"
+                            title="Call Customer"
+                          >
+                            <Phone className="w-4 h-4" />
+                          </a>
+
+                          {/* Inspect Modal */}
+                          <button
+                            onClick={() => setSelectedRecord(r)}
+                            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-indigo-600 transition-colors"
+                            title="Inspect Details & Documents"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+
+                          {/* Delete */}
+                          <button
+                            onClick={() => handleDeleteRecord(r)}
+                            className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition-colors"
+                            title="Delete Booking"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-slate-500 text-xs">
@@ -500,7 +611,7 @@ export default function AdminDashboardPage() {
             </button>
 
             <div className="space-y-1">
-              <span className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400">Booking Inspector</span>
+              <span className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400">Booking Summary Inspector</span>
               <h2 className="text-2xl font-black text-slate-900 dark:text-white">
                 {selectedRecord.service_selected}
               </h2>
@@ -521,15 +632,19 @@ export default function AdminDashboardPage() {
                 <span className="font-semibold text-indigo-600">{selectedRecord.email}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Address:</span>
+                <span className="text-slate-500">Doorstep Location:</span>
                 <span className="font-semibold text-right max-w-[250px]">{selectedRecord.address || 'Doorstep Collection'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Current Status:</span>
+                <span className="font-black text-indigo-600">{selectedRecord.booking_status}</span>
               </div>
             </div>
 
-            {/* Document Links */}
+            {/* Attached Documents */}
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                Uploaded Documents (Supabase Bucket 'documents'):
+                Uploaded Documents:
               </h4>
 
               {selectedRecord.documents_required && selectedRecord.documents_required.length > 0 ? (
@@ -544,18 +659,26 @@ export default function AdminDashboardPage() {
                     >
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-indigo-500" />
-                        <span className="font-bold line-clamp-1">Attached Document #{idx + 1}</span>
+                        <span className="font-bold line-clamp-1">Document Attachment #{idx + 1}</span>
                       </div>
                       <ExternalLink className="w-4 h-4" />
                     </a>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-slate-500">No document files attached.</p>
+                <p className="text-xs text-slate-500">No document files attached. Executive will collect physical copies.</p>
               )}
             </div>
 
-            <div className="pt-2 flex justify-end">
+            <div className="pt-2 flex justify-between items-center">
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Summary</span>
+              </button>
+
               <button
                 onClick={() => setSelectedRecord(null)}
                 className="px-5 py-2.5 rounded-xl gradient-bg text-white font-bold text-xs"

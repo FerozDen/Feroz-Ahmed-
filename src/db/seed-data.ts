@@ -1,7 +1,7 @@
 export interface ServiceItem {
   id: string;
   title: string;
-  category: 'Identity' | 'Income & Tax' | 'Residence & Caste' | 'Vehicle & Driving' | 'Business & Legal';
+  category: 'Identity' | 'Income & Tax' | 'Residence & Caste' | 'Vehicle & Driving' | 'Business & Legal' | 'Property & Certificates';
   description: string;
   estimatedDays: number;
   feeAmount: number;
@@ -13,105 +13,152 @@ export interface ServiceItem {
 
 export const INITIAL_SERVICES: ServiceItem[] = [
   {
-    id: 'aadhaar-new',
-    title: 'New Aadhaar Card Enrolment',
-    category: 'Identity',
-    description: 'Fresh enrolment for Aadhaar Card with biometric verification and official acknowledgement slip.',
+    id: 'birth-certificate',
+    title: 'Birth Certificate Assistance',
+    category: 'Property & Certificates',
+    description: 'Fresh birth registration, duplicate copy issuance, or name addition in Municipal records.',
     estimatedDays: 7,
-    feeAmount: 150,
-    requiredDocs: ['Proof of Identity', 'Proof of Address', 'Date of Birth Proof'],
+    feeAmount: 299,
+    requiredDocs: ['Hospital Discharge Summary / Slip', 'Parents Identity Proof', 'Address Proof'],
     popular: true,
-    icon: 'Fingerprint',
-    badge: 'High Demand'
-  },
-  {
-    id: 'aadhaar-update',
-    title: 'Aadhaar Address & Mobile Update',
-    category: 'Identity',
-    description: 'Update demographic details including residential address, mobile number, and email in Aadhaar.',
-    estimatedDays: 3,
-    feeAmount: 100,
-    requiredDocs: ['Valid Address Proof (Utility bill / Rent Agreement)', 'Current Aadhaar Number'],
-    popular: true,
-    icon: 'Edit3'
-  },
-  {
-    id: 'pan-new',
-    title: 'New PAN Card Application (Form 49A)',
-    category: 'Income & Tax',
-    description: 'Instant e-PAN & physical PAN card allotment for individuals and non-citizens.',
-    estimatedDays: 5,
-    feeAmount: 220,
-    requiredDocs: ['Identity Proof', 'Address Proof', 'Passport Photo'],
-    popular: true,
-    icon: 'CreditCard',
+    icon: 'Baby',
     badge: 'Popular'
-  },
-  {
-    id: 'pan-correction',
-    title: 'PAN Card Correction / Reprint',
-    category: 'Income & Tax',
-    description: 'Correct name, date of birth, photo, father’s name or request a duplicate physical PAN card.',
-    estimatedDays: 4,
-    feeAmount: 180,
-    requiredDocs: ['Existing PAN Copy', 'Supporting Correction Document'],
-    icon: 'FileCheck'
   },
   {
     id: 'income-certificate',
     title: 'State Income Certificate Issue',
     category: 'Income & Tax',
     description: 'Official Tehsildar certified annual income certificate for scholarship, subsidies, and government schemes.',
-    estimatedDays: 10,
+    estimatedDays: 7,
     feeAmount: 250,
-    requiredDocs: ['Salary Slip / ITR', 'Ration Card / Voter ID', 'Self Declaration Affidavit'],
+    requiredDocs: ['Salary Slip / ITR / Bank Statement', 'Ration Card / Voter ID', 'Self Declaration Affidavit'],
     popular: true,
     icon: 'TrendingUp',
     badge: 'Govt Subsidy'
   },
   {
+    id: 'caste-certificate',
+    title: 'Caste / Tribe Certificate (SC/ST/OBC)',
+    category: 'Residence & Caste',
+    description: 'Verification and issuance of official Caste Certificate for education reservation and welfare benefits.',
+    estimatedDays: 10,
+    feeAmount: 350,
+    requiredDocs: ['Father/Relative Caste Proof', 'Voter Card / Aadhaar', 'School Register Copy'],
+    popular: true,
+    icon: 'ShieldCheck',
+    badge: 'High Demand'
+  },
+  {
+    id: 'ews-certificate',
+    title: 'Economically Weaker Section (EWS) Cert',
+    category: 'Income & Tax',
+    description: '10% central & state government reservation certificate for eligible candidates.',
+    estimatedDays: 8,
+    feeAmount: 299,
+    requiredDocs: ['Family Income Proof', 'Property Declaration Affidavit', 'Aadhaar & PAN'],
+    popular: true,
+    icon: 'Award',
+    badge: 'Fast Track'
+  },
+  {
     id: 'domicile-certificate',
     title: 'Residence / Domicile Certificate',
     category: 'Residence & Caste',
-    description: 'Official proof of permanent residence in state for education admissions & recruitment.',
-    estimatedDays: 12,
+    description: 'Official proof of permanent residence in state for education admissions & government recruitment.',
+    estimatedDays: 8,
     feeAmount: 300,
     requiredDocs: ['Continuous 10-yr Residence Proof', 'School Leaving Cert', 'Aadhaar Card'],
     popular: true,
     icon: 'Home'
   },
   {
-    id: 'caste-certificate',
-    title: 'Caste / Tribe Certificate (SC/ST/OBC)',
-    category: 'Residence & Caste',
-    description: 'Verification and issuance of Caste Certificate for reservation and welfare benefits.',
-    estimatedDays: 15,
-    feeAmount: 350,
-    requiredDocs: ['Father/Relative Caste Proof', 'Voter Card', 'School Register Copy'],
-    icon: 'ShieldCheck'
+    id: 'marriage-certificate',
+    title: 'Marriage Registration Certificate',
+    category: 'Property & Certificates',
+    description: 'Legal registration under Special Marriage Act or Hindu Marriage Act with official certificate.',
+    estimatedDays: 10,
+    feeAmount: 499,
+    requiredDocs: ['Bride & Groom Age Proof', 'Wedding Card / Photos', 'Witness Identity Proofs'],
+    popular: true,
+    icon: 'Heart',
+    badge: 'Doorstep Assist'
+  },
+  {
+    id: 'death-certificate',
+    title: 'Death Certificate Issue',
+    category: 'Property & Certificates',
+    description: 'Official Municipal / Panchayat death record registration and duplicate certificate issuance.',
+    estimatedDays: 5,
+    feeAmount: 250,
+    requiredDocs: ['Doctor / Hospital Cause of Death Slip', 'Deceased Aadhaar / Voter ID', 'Applicant ID Proof'],
+    icon: 'FileText'
+  },
+  {
+    id: 'encumbrance-certificate',
+    title: 'Encumbrance Certificate (EC) Issue',
+    category: 'Property & Certificates',
+    description: 'Property search report verifying liability, mortgage, or clean title history from Sub-Registrar.',
+    estimatedDays: 4,
+    feeAmount: 399,
+    requiredDocs: ['Property Sale Deed Copy', 'Survey / Khata Number', 'Applicant ID Proof'],
+    popular: true,
+    icon: 'Key',
+    badge: 'Property Legal'
+  },
+  {
+    id: 'property-mutation',
+    title: 'Property Mutation & Revenue Record (Khata)',
+    category: 'Property & Certificates',
+    description: 'Transfer of title ownership in municipal land records (Pahani, Patta, 7/12, or Khata).',
+    estimatedDays: 14,
+    feeAmount: 799,
+    requiredDocs: ['Registered Sale Deed', 'Latest Property Tax Paid Receipt', 'Seller & Buyer Aadhaar'],
+    icon: 'Building'
   },
   {
     id: 'driving-licence-renew',
-    title: 'Driving Licence Renewal & DL Service',
+    title: 'Driving Licence Renewal & Vehicle RC',
     category: 'Vehicle & Driving',
-    description: 'Renew expired Smart Card Driving Licence or apply for International Driving Permit (IDP).',
+    description: 'Renew expired Smart Card Driving Licence, address change, or Vehicle RC Transfer assistance.',
     estimatedDays: 7,
     feeAmount: 450,
-    requiredDocs: ['Existing DL Copy', 'Medical Fitness Certificate Form 1A', 'Aadhaar Card'],
+    requiredDocs: ['Existing DL / RC Copy', 'Medical Fitness Certificate Form 1A', 'Aadhaar Card'],
     popular: true,
     icon: 'Car',
-    badge: 'Fast Track'
+    badge: 'Doorstep Pickup'
   },
   {
     id: 'passport-fresh',
-    title: 'Tatkal & Normal Fresh Passport',
+    title: 'Passport Assistance (Fresh & Tatkal)',
     category: 'Identity',
     description: 'End-to-end assistance for Passport appointment booking, Annexure filing, and Police verification guide.',
-    estimatedDays: 14,
-    feeAmount: 1750,
+    estimatedDays: 12,
+    feeAmount: 1499,
     requiredDocs: ['Aadhaar Card', 'PAN Card', 'Bank Passbook / Electricity Bill'],
     popular: true,
     icon: 'Globe'
+  },
+  {
+    id: 'pan-new',
+    title: 'New PAN Card & Correction (Form 49A)',
+    category: 'Income & Tax',
+    description: 'Instant e-PAN & physical PAN card allotment or name/DOB correction with doorstep delivery.',
+    estimatedDays: 4,
+    feeAmount: 220,
+    requiredDocs: ['Identity Proof', 'Address Proof', 'Passport Photo'],
+    popular: true,
+    icon: 'CreditCard'
+  },
+  {
+    id: 'aadhaar-update',
+    title: 'Aadhaar Enrolment & Update Assistance',
+    category: 'Identity',
+    description: 'Update demographic details (address, mobile, name) or new enrolment appointment booking.',
+    estimatedDays: 3,
+    feeAmount: 150,
+    requiredDocs: ['Valid Address Proof (Utility bill / Rent Agreement)', 'Current Aadhaar Number'],
+    popular: true,
+    icon: 'Fingerprint'
   },
   {
     id: 'gst-registration',
@@ -186,47 +233,13 @@ export const INITIAL_DOCUMENTS: StoredDocument[] = [
     fileSize: '2.1 MB',
     fileType: 'pdf',
     issueDate: '2018-09-15',
-    expiryDate: '2026-08-28', // Expiring in 25 days!
+    expiryDate: '2026-08-28',
     status: 'Expiring Soon',
     isVerified: true,
     metadata: {
       issuingAuthority: 'RTO Andheri, Mumbai',
       holderName: 'Rahul Sharma',
       state: 'Maharashtra'
-    }
-  },
-  {
-    id: 'doc-104',
-    title: 'State Income Certificate (FY 2025-26)',
-    category: 'Income & Tax',
-    documentNumber: 'INC/2025/98231',
-    fileSize: '1.8 MB',
-    fileType: 'pdf',
-    issueDate: '2025-05-10',
-    expiryDate: '2026-03-31', // Expired or near
-    status: 'Expiring Soon',
-    isVerified: true,
-    metadata: {
-      issuingAuthority: 'Tehsildar Office, Pune',
-      holderName: 'Rahul Sharma',
-      state: 'Maharashtra'
-    }
-  },
-  {
-    id: 'doc-105',
-    title: 'Indian Passport (36 Pages)',
-    category: 'Identity',
-    documentNumber: 'Z8472910',
-    fileSize: '3.4 MB',
-    fileType: 'pdf',
-    issueDate: '2016-01-10',
-    expiryDate: '2026-01-09',
-    status: 'Expired',
-    isVerified: true,
-    metadata: {
-      issuingAuthority: 'Regional Passport Office, Mumbai',
-      holderName: 'Rahul Sharma',
-      state: 'Central'
     }
   }
 ];
@@ -238,7 +251,7 @@ export interface ApplicationTrackItem {
   category: string;
   applicantName: string;
   status: 'Submitted' | 'Verification' | 'Processing' | 'Completed' | 'Rejected';
-  currentStep: number; // 1 to 4
+  currentStep: number;
   feePaid: number;
   submittedAt: string;
   estimatedCompletion: string;
@@ -254,7 +267,7 @@ export const INITIAL_APPLICATIONS: ApplicationTrackItem[] = [
   {
     id: 'app-901',
     applicationNumber: 'CR-2026-849201',
-    serviceTitle: 'Driving Licence Renewal & DL Service',
+    serviceTitle: 'Driving Licence Renewal & Vehicle RC',
     category: 'Vehicle & Driving',
     applicantName: 'Rahul Sharma',
     status: 'Processing',
@@ -264,27 +277,9 @@ export const INITIAL_APPLICATIONS: ApplicationTrackItem[] = [
     estimatedCompletion: '2026-08-07',
     stepsHistory: [
       { title: 'Application Submitted', description: 'Form and uploaded DL documents received.', completed: true, timestamp: '2026-08-01 10:15 AM' },
-      { title: 'Document Verification', description: 'Identity and Form 1A verified by certiR agent.', completed: true, timestamp: '2026-08-02 02:30 PM' },
-      { title: 'RTO Authority Processing', description: 'Application submitted to RTO portal for smart card printing.', completed: false, timestamp: 'In Progress' },
-      { title: 'Digital & Physical Delivery', description: 'Updated e-DL sent to Vault & physical card dispatched.', completed: false }
-    ]
-  },
-  {
-    id: 'app-902',
-    applicationNumber: 'CR-2026-729104',
-    serviceTitle: 'State Income Certificate Issue',
-    category: 'Income & Tax',
-    applicantName: 'Rahul Sharma',
-    status: 'Verification',
-    currentStep: 2,
-    feePaid: 250,
-    submittedAt: '2026-08-02',
-    estimatedCompletion: '2026-08-11',
-    stepsHistory: [
-      { title: 'Application Submitted', description: 'Salary slips and declaration filed successfully.', completed: true, timestamp: '2026-08-02 11:00 AM' },
-      { title: 'Tehsildar Scrutiny', description: 'Reviewing income tax declarations and address proof.', completed: false, timestamp: 'Under Review' },
-      { title: 'Digital Signature & Approval', description: 'Authorized officer signing digital certificate.', completed: false },
-      { title: 'Certificate Issued', description: 'Direct download available in your Vault.', completed: false }
+      { title: 'Doorstep Pickup', description: 'Field executive collected physical copies.', completed: true, timestamp: '2026-08-02 02:30 PM' },
+      { title: 'Government Processing', description: 'Submitted to official Issuing Authority portal.', completed: false, timestamp: 'In Progress' },
+      { title: 'Certificate Delivered', description: 'Certificate delivered to home address.', completed: false }
     ]
   }
 ];
