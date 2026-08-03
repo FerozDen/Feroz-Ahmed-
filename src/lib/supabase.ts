@@ -34,11 +34,11 @@ export const supabaseAdmin = getSupabaseAdmin();
 /**
  * Upload customer file to Supabase Storage bucket 'documents'
  */
-export async function uploadCustomerDocument(file: File): Promise<string> {
+export async function uploadCustomerDocument(file: File, customPrefix?: string): Promise<string> {
   try {
     const client = getSupabase();
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+    const fileName = `${customPrefix ? `${customPrefix}_` : ''}${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
     const filePath = `customer-uploads/${fileName}`;
 
     console.log('[Supabase Storage] Uploading document to bucket documents:', filePath);
@@ -63,3 +63,5 @@ export async function uploadCustomerDocument(file: File): Promise<string> {
     return `https://zfgunzkqvjypliaocosp.supabase.co/storage/v1/object/public/documents/demo_${Date.now()}_${file.name}`;
   }
 }
+
+export const uploadDocumentFile = uploadCustomerDocument;
