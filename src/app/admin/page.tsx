@@ -13,7 +13,8 @@ import {
   Mail,
   Lock,
   Key,
-  CheckCircle2
+  CheckCircle2,
+  FileText
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
