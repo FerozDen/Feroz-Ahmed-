@@ -1,0 +1,10 @@
+# Supabase CLI Configuration
+project_id = "zfgunzkqvjypliaocosp"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+
+[db]
+port = 54322

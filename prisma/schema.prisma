@@ -1,0 +1,134 @@
+// Prisma Schema for CertiR Document Marketplace
+// Database: PostgreSQL (Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  phone     String?
+  image     String?
+  role      String   @default("customer")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Profile {
+  id          String   @id @default(uuid())
+  userId      String?  @map("user_id")
+  fullName    String   @map("full_name")
+  email       String   @unique
+  phoneNumber String?  @map("phone_number")
+  avatarUrl   String?  @map("avatar_url")
+  role        String   @default("customer")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("profiles")
+}
+
+model Service {
+  id                String   @id @default(uuid())
+  slug              String   @unique
+  title             String
+  category          String
+  description       String?
+  feeAmount         Float    @map("fee_amount")
+  estimatedDays     Int      @default(3) @map("estimated_days")
+  documentsRequired Json     @default("[]") @map("documents_required")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@map("services")
+}
+
+model Booking {
+  id                String            @id @default(uuid())
+  customerName      String            @map("customer_name")
+  mobileNumber      String            @map("mobile_number")
+  email             String
+  address           String?
+  serviceSelected   String            @map("service_selected")
+  documentsRequired Json              @default("[]") @map("documents_required")
+  bookingStatus     String            @default("Pending") @map("booking_status")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  bookingDocuments  BookingDocument[]
+  payments          Payment[]
+
+  @@map("bookings")
+}
+
+model BookingDocument {
+  id           String   @id @default(uuid())
+  bookingId    String   @map("booking_id")
+  documentName String   @map("document_name")
+  fileUrl      String   @map("file_url")
+  fileType     String?  @map("file_type")
+  fileSize     String?  @map("file_size")
+  uploadedAt   DateTime @default(now()) @map("uploaded_at")
+  booking      Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("booking_documents")
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  bookingId     String   @map("booking_id")
+  amount        Float
+  paymentStatus String   @default("Pending") @map("payment_status")
+  paymentMethod String   @default("UPI / Card") @map("payment_method")
+  transactionId String?  @map("transaction_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  booking       Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Application {
+  id                  String   @id @default(uuid())
+  fullName            String   @map("full_name")
+  phoneNumber         String   @map("phone_number")
+  email               String
+  certificateType     String   @map("certificate_type")
+  address             String?
+  pickupAddress       String?  @map("pickup_address")
+  preferredPickupDate String?  @map("preferred_pickup_date")
+  preferredPickupTime String?  @map("preferred_pickup_time")
+  uploadedDocuments   Json     @default("[]") @map("uploaded_documents")
+  additionalNotes     String?  @map("additional_notes")
+  status              String   @default("Pending")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@map("applications")
+}
+
+model Document {
+  id             String   @id @default(uuid())
+  userId         String?  @map("user_id")
+  title          String
+  category       String
+  documentNumber String?  @map("document_number")
+  fileUrl        String?  @map("file_url")
+  fileSize       String?  @map("file_size")
+  fileType       String?  @map("file_type")
+  issueDate      String?  @map("issue_date")
+  expiryDate     String?  @map("expiry_date")
+  status         String   @default("Active")
+  isVerified     Boolean  @default(true) @map("is_verified")
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("documents")
+}
